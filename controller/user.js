@@ -5,21 +5,19 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const otp = require('otp-generator');
 
-exports.register = async (req, res, next) => {
+exports.register = async (req, res) => {
     try {
        const {fullName, emailAddress, password, confirmPassword, pin} = req.body;
        
        const existingEmail = await userModel.findOne({emailAddress: emailAddress.toLowerCase()});
        if(existingEmail) {
-        return next({
-            message: `User with email ${emailAddress} already exists`,
-            statusCode: 400
+        return res.status(400).json({
+            message: `User with email ${emailAddress} already exists`
         })
        }
        if(password !== confirmPassword) {
-        return next({
-            message: `Password does not match`,
-            statusCode: 400
+        return res.status(400).json({
+            message: 'Password does not match'
         })
        }
 
@@ -58,7 +56,7 @@ exports.register = async (req, res, next) => {
     }
 },
 
-exports.login = async (req, res, next) => {
+exports.login = async (req, res) => {
     try {
         const { emailAddress, password} = req.body;
 
@@ -70,9 +68,8 @@ exports.login = async (req, res, next) => {
             }
         
         if (user.lockUntil && user.lockUntil > Date.now()) {
-            return next({
-                message: `Account locked until ${user.lockUntil}`,
-                statusCode: 403
+            return res.status(403).json({
+                message: `Account locked until ${user.lockUntil}`
             })
         }
 
@@ -96,14 +93,13 @@ exports.login = async (req, res, next) => {
             token
         })
     } catch (error) {
-         next({
-                message: error.message,
-                statusCode: 500
-            })
+         res.status(500).json({
+            error: error.message
+         })
     }
 }
 
-exports.createAccount = async (req, res, next) => {
+exports.createAccount = async (req, res) => {
     try {
         const { id } = req.user;
         const user = await userModel.findById(id);
@@ -131,14 +127,13 @@ exports.createAccount = async (req, res, next) => {
         });
 
     } catch (error) {
-         next({
-                message: error.message,
-                statusCode: 500
-            })
+         res.status(500).json({
+            error: error.message
+         })
     }
 };
 
-exports.totalBalance =async (req, res, next) => {
+exports.totalBalance =async (req, res) => {
     try {
         const { id } = req.user;
         const user = await userModel.findById(id);
@@ -167,7 +162,7 @@ exports.totalBalance =async (req, res, next) => {
     }
 };
 
-exports.transferFunds = async (req, res, next) => {
+exports.transferFunds = async (req, res) => {
     try {
         const { id } = req.user;
         const { senderAccountDetails, recieverAccountDetails, amount } = req.body;
