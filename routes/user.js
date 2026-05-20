@@ -192,11 +192,11 @@ router.put('/totalBalance', authenticate, totalBalance);
  *           schema:
  *             type: object
  *             properties:
- *               sendersAccountNumber:
+ *               senderAccountDetails:
  *                 type: string
  *                 description: The account number of the user transferring funds
  *                 example: 1234567890
- *               recipientAccountNumber:
+ *               recieverAccountDetails:
  *                 type: string
  *                 description: The account number of the user receiving funds
  *                 example: 0987654321
