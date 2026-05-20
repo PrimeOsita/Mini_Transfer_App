@@ -168,7 +168,7 @@ exports.transferFunds = async (req, res) => {
                 message: 'Sender does not exist'
             })
         }
-        const senderAccount = await accountModel.findOne({ accountNumber: senderAccountDetails });
+        const senderAccount = await accountModel.findOne({ senderAccountDetails: senderAccountDetails });
         if (!senderAccount) {
              return res.status(400).json({
                 message: 'Account does not exist',
@@ -176,7 +176,7 @@ exports.transferFunds = async (req, res) => {
                 
 
         }
-        const recieverAccount = await accountModel.findOne({ accountNumber: recipientAccountNumber});
+        const recieverAccount = await accountModel.findOne({ recieverAccountDetails: recipientAccountNumber});
 
         if (senderAccount.lockUntil && senderAccount.lockUntil > Date.now()) {
             return res.status(403).json({
