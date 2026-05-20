@@ -1,71 +1,79 @@
 const userModel = require('../model/user');
 const accountModel = require('../model/account');
-const HistoryModel = require('../model/transactionHistory');
+const transactionHistoryModel = require('../model/transactionHistory');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const otp = require('otp-generator');
 
-exports.register = async (req, res) => {
+exports.register = async (req, res, next) => {
     try {
        const {fullName, emailAddress, password, confirmPassword } = req.body;
        
        const existingEmail = await userModel.findOne({emailAddress: emailAddress.toLowerCase()});
        if(existingEmail) {
-        return res.status(400).json({
-            message: `User with email ${emailAddress} already exists`
+        return next({
+            message: `User with email ${emailAddress} already exists`,
+            statusCode: 400
         })
        }
+
+
        if(password !== confirmPassword) {
-        return res.status(400).json({
-            message: 'Password does not match'
+        return next({
+            message: `Password does not match`,
+            statusCode: 400
         })
        }
 
        const salt = await bcrypt.genSalt(10);
        const hashedPassword = await bcrypt.hash(password, salt);
+
        const user = await userModel.create({
         fullName,
         emailAddress: emailAddress.toLowerCase(),
         password: hashedPassword,
        })
-       const account = await accountModel.create({
-        accountName: user.fullName,
-        accountNumber: otp.generate(10, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false }),
+
+       const accData = await accountModel.create({
+        accountName: fullName,
+        accountNumber: Math.floor(Math.random()*1E10),
+        accountType: 'savings',
         userId: user._id
        })
 
-       const userAccount = {
+       const data = {
         name: user.fullName,
         email: user.emailAddress,
-        accountNumber: account.accountNumber,
-        accountName: account.accountName
+        accountNumber: accData.accountNumber,
+        accountType: accData.accountType
        }
 
        res.status(201).json({
         message: 'User created succesfully',
-        userAccount
+        data
        })
     } catch (error) {
-         return res.status(500).json({
-            error: error.message
-         })
+         next({
+                message: error.message,
+                statusCode: 500
+            })
     }
 },
 
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
     try {
         const { emailAddress, password} = req.body;
 
         const user = await userModel.findOne({emailAddress : emailAddress.toLowerCase()});
         if(!user) {
-            return res.status(400).json({
-                message: 'User does not exist'
+            return next({
+                message: `User with email ${emailAddress} does not exist`,
+                statusCode: 404
             })
-            }
-        
+        }
         if (user.lockUntil && user.lockUntil > Date.now()) {
-            return res.status(403).json({
-                message: `Account locked until ${user.lockUntil}`
+            return next({
+                message: `Account locked until ${user.lockUntil}`,
+                statusCode: 403
             })
         }
 
@@ -73,12 +81,13 @@ exports.login = async (req, res) => {
         if(!passwordMatch) {
             user.loginAttempts += 1;
             if (user.loginAttempts >= 5) {
-                user.lockUntil = new Date(Date.now() + 10 * 60000);
+                user.lockUntil = new Date(Date.now() + 30 * 60 * 1000);
                 user.loginAttempts = 0;
             }
             await user.save();
-            return res.status(400).json({
-                message: `Invalid Credentials`
+            return next({
+                message: `Invalid Credentials`,
+                statusCode: 400
             })
         }
 
@@ -89,160 +98,224 @@ exports.login = async (req, res) => {
             token
         })
     } catch (error) {
-         res.status(500).json({
-            error: error.message
-         })
+         next({
+                message: error.message,
+                statusCode: 500
+            })
     }
-}
+};
 
-exports.createAccount = async (req, res) => {
+exports.createAccount = async (req, res, next) => {
     try {
         const { id } = req.user;
         const user = await userModel.findById(id);
         if(!user) {
-            return res.status(400).json({
-                message: 'User does not exist'
+            return next({
+                message: `User does not exist`,
+                statusCode: 404
             })
         }
+        // console.log(req.protocol);
         const accountType = req.body.accountType || 'savings';
-        const account = await accountModel.create({
+        const accData = await accountModel.create({
             userId: user._id,
             accountName: user.fullName,
-            accountNumber: otp.generate(10, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false }),
-            accountType: accountType,
+            accountNumber: Math.floor(Math.random()*1E10),
+            accountType: accountType
         });
-    
-        await account.save();
+        await accData.save();
 
         res.status(201).json({
             message: 'Account created successfully',
             data: {
-                accountNumber: account.accountNumber,
-                accountType: account.accountType
+                accountNumber: accData.accountNumber,
+                accountType: accData.accountType
             }
         });
 
     } catch (error) {
-         res.status(500).json({
-            error: error.message
-         })
+         next({
+                message: error.message,
+                statusCode: 500
+            })
     }
 };
 
-exports.totalBalance =async (req, res) => {
+exports.totalBalance =async (req, res, next) => {
     try {
         const { id } = req.user;
         const user = await userModel.findById(id);
         if(!user) {
-            return res.status(400).json({
-                message: 'User does not exist'
+            return next({
+                message: `User does not exist`,
+                statusCode: 404
             })
         }
-        const balance = await accountModel.find({userId: id});
-        if(!balance) {
-             return res.status(400).json({
-                message: 'Account does not exist'
+        const totalBalance = await accountModel.find({userId: id});
+        if(!totalBalance) {
+            return next({
+                message: `Account does not exist`,
+                statusCode: 404
             })
         }
 
-        const total = balance.reduce((e, account) => e + parseFloat(account.balance), 0);
+        const total = totalBalance.reduce((acc, account) => acc + parseFloat(account.balance), 0);
 
         res.status(200).json({
-            message: 'Successfull',
+            message: 'Total funds retrieved successfully',
             totalFunds: total
         })
     } catch (error) {
-        return res.status(500).json({
-            error: error.message
-        })
+        next({
+                message: error.message,
+                statusCode: 500
+            })
     }
 };
 
-exports.transferFunds = async (req, res) => {
+exports.createPin = async (req, res, next) => {
     try {
         const { id } = req.user;
-        const { senderAccountDetails, recieverAccountDetails, amount } = req.body;
+        const user = await userModel.findById(id);
+
+        if (!user) {
+            return next({
+                message: `user with ${id} not found`,
+                statusCode: 404
+            })
+        }
+
+        const { pin } = req.body;
+
+        if (pin.length > 4) {
+            return next({
+                message: `Pin must be 4 digits`,
+                statusCode: 400
+            })
+        }
+
+        const salt = await bcrypt.genSalt(10);
+       const hashedPin = await bcrypt.hash(pin, salt);
+
+        const setpin = {
+            pin : hashedPin
+        }
+
+        const updatePin = await accountModel.findOneAndUpdate({userId: id}, setpin, {new: true});
+
+        res.status(200).json({
+            message: 'pin set succesfully'
+        })
+    } catch (error) {
+        next({
+            message: error.message,
+            statusCode: 500
+        })
+    }
+}
+
+exports.transferFunds = async (req, res, next) => {
+    try {
+        const { id } = req.user;
+        const acccountId = req.params.id;
+
+        const { sendersAccountNumber, recipientAccountNumber, amount, pin, memo } = req.body;
         const sender = await userModel.findById(id);
         if(!sender) {
-           return res.status(400).json({
-                message: 'Sender does not exist'
+            return next({
+                message: `User does not exist`,
+                statusCode: 404
             })
         }
-        const senderAccount = await accountModel.findOne({ senderAccountDetails: senderAccountDetails });
+        const senderAccount = await accountModel.findOne({ $or: [{ accountNumber: sendersAccountNumber }, { _id: acccountId }] });
         if (!senderAccount) {
-             return res.status(400).json({
-                message: 'Account does not exist',
-            })
-                
-
-        }
-        const recieverAccount = await accountModel.findOne({ recieverAccountDetails: recipientAccountNumber});
-
-        if (senderAccount.lockUntil && senderAccount.lockUntil > Date.now()) {
-            return res.status(403).json({
-                message: `Account locked until ${senderAccount.lockUntil}`
+            return next({
+                message: `Sender account does not exist`,
+                statusCode: 404
             })
         }
+        const recipientAccount = await accountModel.findOne({ accountNumber: recipientAccountNumber});
 
-        if (!recieverAccount) {
-            return res.status(400).json({
-                message: 'Account does not exist'
+        // console.log(recipientAccount);
+        if (!recipientAccount) {
+            return next({
+                message: `Recipient account does not exist`,
+                statusCode: 404
             })
         }
+
+        if(senderAccount.pin === undefined) {
+            return next({
+                message: `Please set a transfer pin to continue`,
+                statusCode: 400
+            })
+        }
+
+        const pinMatch = await bcrypt.compare(pin, senderAccount.pin);
+
+        if (!pinMatch) {
+            return next({
+                message: `Invalid pin`,
+                statusCode: 400
+            })
+        }
+
         if (amount > senderAccount.balance) {
-           return res.status(400).json({
-            message: 'Insufficient funds'
-           })
-        }
-        if (senderAccount.pin !== pin) {
-            senderAccount.transferAttempts += 1;
-            if (senderAccount.transferAttempts >= 5) {
-                senderAccount.lockUntil = new Date(Date.now() + 30 * 60 * 1000);
-                senderAccount.transferAttempts = 0;
-            }
-            await senderAccount.save();
-            return res.status(400).json({
-                message: 'Invalid Pin, your account will be blocked after a few trial'
+            return next({
+                message: `Insufficient funds`,
+                statusCode: 400
             })
         }
 
         senderAccount.balance -= amount;
-        recieverAccount.balance += amount;
+        recipientAccount.balance += amount;
 
-        await HistoryModel.create({
+        await transactionHistoryModel.create({
         accountId: senderAccount._id,
         debit: amount,
-        credit: 0
+        credit: 0,
+        memo: memo || `Transfer to account ${recipientAccount.accountNumber}`
         });
-        await HistoryModel.create({
+        await transactionHistoryModel.create({
         accountId: recipientAccount._id,
         credit: amount,
-        debit: 0
+        debit: 0,
+        memo: memo || `Transfer from account ${senderAccount.accountNumber}`
         });
         await senderAccount.save();
         await recipientAccount.save();
         res.status(200).json({
-            message: 'Transfer Successful ✅',
-            data: { senderAccountDetails: senderAccount.accountNumber, recieverAccountDetailsr: recipientAccount.accountNumber, recieverName: recieverAccount.accountName, amount }
+            message: 'Funds transferred successfully',
+            data: { senderAccountNumber: senderAccount.accountNumber, recipientAccountNumber: recipientAccount.accountNumber, recipientName: recipientAccount.accountName, amount }
         });
     } catch (error) {
-        return res.status(500).json({
-            error: error.message
-        })
+        next({
+                message: error.message,
+                statusCode: 500
+            })
     }
-}
-exports.getAllAccount = async (req, res) => {
+};
+
+exports.getAllAccounts = async (req, res, next) => {
     try {
-
-        const All = accountModel.find()
-
-        return res.status(200).json({
-        message: 'All accounts:',
-        data: All
-        })
+        const { id } = req.user;
+        const user = await userModel.findById(id);
+        if(!user) {
+            return next({
+                message: `User does not exist`,
+                statusCode: 404
+            })
+        }
+        console.log(id);
+        const accounts = await accountModel.find({userId: id}).select('accountNumber accountType _id');
+        res.status(200).json({
+            message: 'Accounts retrieved successfully',
+            data: accounts
+        });
     } catch (error) {
-        return res.status(500).json({
-            error: error.message
+        next({
+            message: error.message,
+            statusCode: 500
         })
     }
 }

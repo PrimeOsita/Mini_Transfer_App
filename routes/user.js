@@ -1,7 +1,8 @@
-const { register, login, createAccount, addFunds, totalBalance, transferFunds } = require("../controller/user");
+const { register, login, createAccount, addFunds, totalBalance, transferFunds, getAllAccounts, createPin } = require("../controller/user");
 const { authenticate } = require("../middleware/auth");
-const rateLimiter = require('../')
+const rateLimiter = require("../middleware/rateLimiter");
 const router = require('express').Router();
+
 
 /** 
  * @swagger
@@ -43,7 +44,7 @@ const router = require('express').Router();
  *                 example: password123
  *     responses:
  *       201:
- *         description: User registered succesfully
+ *         description: User created succesfully
  *         content:
  *           application/json:
  *             schema:
@@ -52,7 +53,18 @@ const router = require('express').Router();
  *                 message:
  *                   type: string
  *                   description: A success message
- *                   example: User registered successfully
+ *                   example: User created successfully
+ *       400:
+ *          description: Bad request
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  message:
+ *                    type: string
+ *                    description: An error message
+ *                    example: User already exists
  */
 
 
@@ -83,7 +95,7 @@ router.post('/register', register);
  *                 example: password123
  *     responses:
  *       200:
- *         description: User logged in successfully
+ *         description: Login successful
  *         content:
  *           application/json:
  *             schema:
@@ -92,10 +104,21 @@ router.post('/register', register);
  *                 message:
  *                   type: string
  *                   description: A success message
- *                   example: User logged in successfully
+ *                   example: Login successful
+ *       400:
+ *        description: Bad request
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                message:
+ *                  type: string
+ *                  description: An error message
+ *                  example: Invalid credentials
  */
 
-router.post('/login', login);
+router.post('/login', rateLimiter, login);
 
 /** 
  * @swagger
@@ -134,6 +157,17 @@ router.post('/login', login);
  *                   type: string
  *                   description: A success message
  *                   example: Account created successfully
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                message:
+ *                  type: string
+ *                  description: An error message
+ *                  example: Invalid account details
  */
 
 router.put('/account', authenticate, createAccount);
@@ -161,7 +195,7 @@ router.put('/account', authenticate, createAccount);
  *                 example: 1000
  *     responses:
  *       200:
- *         description: Total balance updated successfully
+ *         description: Total funds retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -170,7 +204,18 @@ router.put('/account', authenticate, createAccount);
  *                 message:
  *                   type: string
  *                   description: A success message
- *                   example: Total balance updated successfully
+ *                   example: Total funds retrieved successfully
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message
+ *                   example: User not found
  */
 
 router.put('/totalBalance', authenticate, totalBalance);
@@ -183,6 +228,14 @@ router.put('/totalBalance', authenticate, totalBalance);
  *      - User
  *     summary: Transfer Funds
  *     description: Transfer funds from one user's account to another
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The Account ID
+ *         schema:
+ *           type: string
+ *           example: 69f6fc59f069dce732d54a15
  *     security:
  *      - bearerAuth: []
  *     requestBody:
@@ -192,11 +245,7 @@ router.put('/totalBalance', authenticate, totalBalance);
  *           schema:
  *             type: object
  *             properties:
- *               senderAccountDetails:
- *                 type: string
- *                 description: The account number of the user transferring funds
- *                 example: 1234567890
- *               recieverAccountDetails:
+ *               recipientAccountNumber:
  *                 type: string
  *                 description: The account number of the user receiving funds
  *                 example: 0987654321
@@ -204,6 +253,10 @@ router.put('/totalBalance', authenticate, totalBalance);
  *                 type: number
  *                 description: The amount to transfer
  *                 example: 1000
+ *               pin:
+ *                 type: string
+ *                 description: The transfer pin of the sender's account
+ *                 example: 1234
  *     responses:
  *       200:
  *         description: Funds transferred successfully
@@ -216,8 +269,34 @@ router.put('/totalBalance', authenticate, totalBalance);
  *                   type: string
  *                   description: A success message
  *                   example: Funds transferred successfully
- *       404:
- *         description: Funds transferred successfully
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message
+ *                   example: Invalid pin
+ */
+
+router.put('/transferFunds/:id', authenticate, transferFunds);
+
+/** 
+ * @swagger
+ * /api/v1/user/allAccounts:
+ *   get:
+ *     tags:
+ *      - User
+ *     summary: Get All User Accounts
+ *     description: Retrieve all accounts for the authenticated user
+ *     security:
+ *      - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Accounts retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -226,9 +305,68 @@ router.put('/totalBalance', authenticate, totalBalance);
  *                 message:
  *                   type: string
  *                   description: A success message
- *                   example: Funds transferred successfully
+ *                   example: Accounts retrieved successfully
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message
+ *                   example: User not found
  */
 
-router.put('/transferFunds', authenticate, transferFunds);
+router.get('/allAccounts', authenticate, getAllAccounts);
+
+/** 
+ * @swagger
+ * /api/v1/user/pin:
+ *   post:
+ *     tags:
+ *      - User
+ *     summary: Create Transfer Pin
+ *     description: Create a transfer pin for the authenticated user
+ *     security:
+ *      - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               pin:
+ *                 type: string
+ *                 description: The transfer pin for the user
+ *                 example: 1234
+ *     responses:
+ *       200:
+ *         description: Pin created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A success message
+ *                   example: Pin created successfully
+ *       400:
+ *         description: Bad request
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: An error message
+ *                   example: User not found
+ */
+
+router.post('/pin', authenticate, createPin);
 
 module.exports = router
