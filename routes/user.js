@@ -216,6 +216,17 @@ router.put('/totalBalance', authenticate, totalBalance);
  *                   type: string
  *                   description: A success message
  *                   example: Funds transferred successfully
+ *       404:
+ *         description: Funds transferred successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   description: A success message
+ *                   example: Funds transferred successfully
  */
 
 router.put('/transferFunds', authenticate, transferFunds);
