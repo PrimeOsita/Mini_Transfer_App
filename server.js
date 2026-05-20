@@ -17,7 +17,7 @@ app.use('/api/v1/user', userRouter);
 const swaggerDefinition = {
   openapi: '3.0.0',
   info: {
-    title: 'Sending Money Api',
+    title: 'Mini-Transfer-Api',
     version: '1.0.0',
     description: 'This is a REST API application made with Express. It retrieves data from JSONPlaceholder.',
     license: {
