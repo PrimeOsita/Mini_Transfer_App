@@ -7,7 +7,7 @@ const otp = require('otp-generator');
 
 exports.register = async (req, res) => {
     try {
-       const {fullName, emailAddress, password, confirmPassword, pin} = req.body;
+       const {fullName, emailAddress, password, confirmPassword } = req.body;
        
        const existingEmail = await userModel.findOne({emailAddress: emailAddress.toLowerCase()});
        if(existingEmail) {
@@ -23,8 +23,6 @@ exports.register = async (req, res) => {
 
        const salt = await bcrypt.genSalt(10);
        const hashedPassword = await bcrypt.hash(password, salt);
-       const Pin = await bcrypt.genSalt(10);
-       const hashedPin = bcrypt.hash(pin, Pin)
        const user = await userModel.create({
         fullName,
         emailAddress: emailAddress.toLowerCase(),
@@ -33,16 +31,14 @@ exports.register = async (req, res) => {
        const account = await accountModel.create({
         accountName: user.fullName,
         accountNumber: otp.generate(10, { upperCaseAlphabets: false, lowerCaseAlphabets: false, specialChars: false }),
-        userId: user._id,
-        pin: Pin
+        userId: user._id
        })
 
        const userAccount = {
         name: user.fullName,
         email: user.emailAddress,
         accountNumber: account.accountNumber,
-        accountName: account.accountName,
-        pin: Pin
+        accountName: account.accountName
        }
 
        res.status(201).json({
@@ -229,6 +225,21 @@ exports.transferFunds = async (req, res) => {
             message: 'Transfer Successful ✅',
             data: { senderAccountDetails: senderAccount.accountNumber, recieverAccountDetailsr: recipientAccount.accountNumber, recieverName: recieverAccount.accountName, amount }
         });
+    } catch (error) {
+        return res.status(500).json({
+            error: error.message
+        })
+    }
+}
+exports.getAllAccount = async (req, res) => {
+    try {
+
+        const All = accountModel.find()
+
+        return res.status(200).json({
+        message: 'All accounts:',
+        data: All
+        })
     } catch (error) {
         return res.status(500).json({
             error: error.message

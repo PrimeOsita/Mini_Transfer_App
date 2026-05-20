@@ -41,10 +41,6 @@ const router = require('express').Router();
  *                 type: string
  *                 description: The User's Confirm Password
  *                 example: password123
- *               pin:
- *                 type: number
- *                 decription: The User's Transfer Pin
- *                 example: 1234
  *     responses:
  *       201:
  *         description: User registered succesfully
@@ -126,10 +122,6 @@ router.post('/login', login);
  *                 type: string
  *                 description: The User's Account Type (savings or current)
  *                 example: savings 
- *               pin:
- *                 type: number
- *                 description: The User's Transfer Pin
- *                 example: 1234
  *     responses:
  *       200:
  *         description: Account created successfully
@@ -212,10 +204,6 @@ router.patch('/totalBalance', authenticate, totalBalance);
  *                 type: number
  *                 description: The amount to transfer
  *                 example: 1000
- *               pin:
- *                 type: number
- *                 description: The transfer pin of the sender's account
- *                 example: 1234
  *     responses:
  *       200:
  *         description: Funds transferred successfully
