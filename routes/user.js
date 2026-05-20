@@ -1,5 +1,6 @@
 const { register, login, createAccount, addFunds, totalBalance, transferFunds } = require("../controller/user");
 const { authenticate } = require("../middleware/auth");
+const rateLimiter = require('../')
 const router = require('express').Router();
 
 /** 
@@ -143,7 +144,7 @@ router.post('/login', login);
  *                   example: Account created successfully
  */
 
-router.put('/account', authenticate, createAccount);
+router.patch('/account', authenticate, createAccount);
 
 /** 
  * @swagger
@@ -180,7 +181,7 @@ router.put('/account', authenticate, createAccount);
  *                   example: Total balance updated successfully
  */
 
-router.put('/totalBalance', authenticate, totalBalance);
+router.patch('/totalBalance', authenticate, totalBalance);
 
 /** 
  * @swagger
@@ -229,6 +230,6 @@ router.put('/totalBalance', authenticate, totalBalance);
  *                   example: Funds transferred successfully
  */
 
-router.put('/transferFunds', authenticate, transferFunds);
+router.patch('/transferFunds', authenticate, transferFunds);
 
 module.exports = router

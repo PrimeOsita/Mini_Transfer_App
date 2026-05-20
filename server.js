@@ -1,7 +1,7 @@
 const express = require('express');
 require('dotenv').config();
-const PORT = process.env.PORT ||2045;
-const rateLimiter = require('./middleware/rateLimiter');
+const PORT = process.env.PORT ||7777;
+// const rateLimiter = require('./middleware/rateLimiter');
 const userRouter = require('./routes/user');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
@@ -11,7 +11,7 @@ const app = express();
 // app.use(cors({origin: 'http://localhost:4070'}))
 app.use(cors({origin: '*'}));
 app.use(express.json());
-app.use(rateLimiter);
+// app.use(rateLimiter);
 app.use('/api/v1/user', userRouter);
 
 const swaggerDefinition = {
@@ -31,7 +31,7 @@ const swaggerDefinition = {
  },
  servers: [
    {
-     url: 'http://localhost:4070',
+     url: 'https://mini-transfer-app-1.onrender.com',
      description: 'Development server',
    },
  ],
@@ -86,7 +86,7 @@ app.use((err, req, res, next) => {
 const mongoose = require('mongoose');
 
 mongoose.connect(process.env.MONGODB_URI).then(() => {
-    console.log("connected to Database");
+    console.log("Database connected successfully");
     app.listen(PORT, () => {
         console.log(`Server is listening to Port: ${PORT}`);
     });
