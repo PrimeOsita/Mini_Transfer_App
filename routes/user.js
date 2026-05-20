@@ -136,7 +136,7 @@ router.post('/login', login);
  *                   example: Account created successfully
  */
 
-router.patch('/account', authenticate, createAccount);
+router.put('/account', authenticate, createAccount);
 
 /** 
  * @swagger
@@ -173,7 +173,7 @@ router.patch('/account', authenticate, createAccount);
  *                   example: Total balance updated successfully
  */
 
-router.patch('/totalBalance', authenticate, totalBalance);
+router.put('/totalBalance', authenticate, totalBalance);
 
 /** 
  * @swagger
@@ -218,6 +218,6 @@ router.patch('/totalBalance', authenticate, totalBalance);
  *                   example: Funds transferred successfully
  */
 
-router.patch('/transferFunds', authenticate, transferFunds);
+router.put('/transferFunds', authenticate, transferFunds);
 
 module.exports = router
